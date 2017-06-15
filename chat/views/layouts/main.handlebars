@@ -1,0 +1,181 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Socket.IO chat</title>
+    <style>
+
+        * {
+          list-style-type: none;
+        }
+
+
+        #contentWrap {
+          display: none;
+        }
+        div {
+          padding-top: 10px;
+          padding-bottom: 10px;
+          border-bottom: 1px solid #c7c7c7;
+        }
+
+        #chatWrap {
+          border: 1px solid black;
+          padding: 5px;
+          max-width: 500px;
+        }
+
+        #username {
+          color: #d90947;
+        }
+
+        #whisper {
+          background-color: #fc6038;
+          font-style: italic;
+        }
+
+        #profile {
+          width: 35px;
+          height: 35px;
+          max-height: 35px;
+          max-width: 35px;
+          margin-right: 5px;
+          float: left;
+        }
+
+        .txt {
+        }
+
+        .content {
+          margin-left: 50px;
+        }
+
+    </style>
+  </head>
+  <body>
+    <div id="nickWrap">
+        <p>Enter a username</p>
+        <p id="nickError"></p>
+        <form action="/" id="setNick" method="post" enctype="multipart/form-data">
+            <input size="35" id="nickname">
+            <input type="submit" value="submit">
+        </form>
+    </div>
+
+    <div id="contentWrap">
+        <div id="chatWrap">
+            <ul id="messages"></ul>
+            <form id="chatform" action="">
+                <input id="m" autocomplete="off" /><button>Send</button>
+            </form>
+        </div>
+        <div id="users"></div>
+    </div>
+
+    <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+    <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+    <script>
+      $(function () {
+        var socket = io();
+        var nickForm = $('#setNick');
+        var nickError = $('#nickError');
+        var nickBox = $('#nickname');
+        var profileBox = $('#profile');
+        var usersBox = $('#users');
+
+        nickForm.submit(function(e) {
+            e.preventDefault();
+            var values = {nick: nickBox.val(), img: profileBox.val()};
+            socket.emit('new user', nickBox.val(), function(data, nickname) {
+                if(data) {
+                    //socket.emit('send message', nickname + ' connected.')
+                    $('#nickWrap').hide();
+                    $('#contentWrap').show();
+                } else {
+                    nickError.html('That username is already taken!');
+                }
+            });
+            nickBox.val('');
+        });
+
+        $('#chatform').submit(function(){
+          socket.emit('send message', $('#m').val());
+          $('#m').val('');
+          return false;
+        });
+
+        socket.on('send message', function(user, msg, same){
+              var br = document.createElement("br");
+          if(same) {
+              console.log('merge messages');
+              var chatmsg = document.getElementsByClassName('txt');
+              chatmsg[chatmsg.length-1].append(br);
+              chatmsg[chatmsg.length-1].append(msg);
+          } else {
+              var currentdate = new Date();
+
+              var thisDiv = $('<div id="msg">');
+              var thisProfile = $("<img src='https://miscmedia-9gag-fun.9cache.com/images/thumbnail-facebook/1481541097.3956_HanUhe_n.jpg' id='profile'>")
+              var contentContainer = $('<div class="content">');
+              var thisUser = $('<li id="username">').text(user + " " + currentdate.getHours() + ":" + currentdate.getMinutes());
+              var thisMsg = $('<li class="txt">').text(msg);
+
+              contentContainer.append(thisUser, thisMsg);
+
+              thisDiv.append(thisProfile, contentContainer);
+              $('#messages').append(thisDiv);
+          }
+          window.scrollTo(0, document.body.scrollHeight);
+        });
+
+
+        socket.on('whisper', function(user, msg, same){
+              var br = document.createElement("br");
+          if(same) {
+              console.log('merge messages');
+              var chatmsg = document.getElementsByClassName('txt');
+              chatmsg[chatmsg.length-1].append(br);
+              chatmsg[chatmsg.length-1].append(msg);
+          } else {
+              var currentdate = new Date();
+
+              var thisDiv = $('<div id="whisper">');
+              var thisUser = $('<li id="username">').text(user + " " + currentdate.getHours() + ":" + currentdate.getMinutes());
+              var thisMsg = $('<li class="txt">').text(msg);
+
+              thisDiv.append(thisUser, thisMsg);
+              $('#messages').append(thisDiv);
+          }
+          window.scrollTo(0, document.body.scrollHeight);
+        });
+
+        function displayMsg(data) {
+            var currentdate = new Date();
+
+            var thisDiv = $('<div id="msg">');
+            var thisUser = $('<li id="username">').text(data.nick + " " + currentdate.getHours() + ":" + currentdate.getMinutes());
+            var thisMsg = $('<li class="txt">').text(data.msg);
+
+            thisDiv.append(thisUser, thisMsg);
+            $('#messages').append(thisDiv);
+        }
+
+        socket.on('load old msgs', function(docs) {
+            for(var i = 0; i < docs.length; i++) {
+                displayMsg(docs[i]);
+            }
+        });
+
+        socket.on('chat simple', function(msg) {
+            console.log(msg);
+            var txt = $('<li class="txt">').text(msg);
+            $('messages').append(txt);
+        });
+
+        socket.on('update online', function(users) {
+          usersBox.val('');
+          usersBox.text('Online: ' + users);
+        });
+      });
+    </script>
+  </body>
+</html>
